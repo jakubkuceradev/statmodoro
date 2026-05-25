@@ -2,12 +2,12 @@ import type { TimerState } from '../../types/timer'
 import type { Settings } from '../../types/settings'
 
 export function computeFillFraction(state: TimerState, settings: Settings): number {
-  if (state.phase === 'idle') return 1
+  if (state.phase === 'idle') return 0
 
   const isFlowmodoro = settings.mode === 'flowmodoro' && state.sessionType === 'focus'
 
   if (!isFlowmodoro) {
-    return Math.min(1, Math.max(0, state.remainingMs / state.plannedDuration))
+    return Math.min(1, Math.max(0, 1 - state.remainingMs / state.plannedDuration))
   }
 
   const elapsed = state.plannedDuration - state.remainingMs

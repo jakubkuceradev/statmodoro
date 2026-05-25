@@ -20,7 +20,7 @@ A Flowmodoro mode (focus as long as you want, break proportional to focus time) 
 
 ### Timer — Core Interaction
 
-1. A circular progress ring drains as the session counts down, giving a glanceable sense of remaining time.
+1. A circular progress ring fills as the session progresses, giving a glanceable sense of elapsed time.
 2. Tapping the ring pauses and resumes the timer — it is the only pause/resume control.
 3. The ring label reads **"Tap to Focus"** whenever a focus session is paused, for any reason including the initial idle state.
 4. The ring label reads **"Tap to Rest"** whenever a break is paused, for any reason.

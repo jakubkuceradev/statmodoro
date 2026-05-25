@@ -12,11 +12,11 @@ Statmodoro is a privacy-first Pomodoro timer with extensive local statistics. Al
 
 Three screens behind a bottom navbar: **Timer**, **Stats**, **Settings**.
 
-**Timer screen:** circular SVG progress ring (220px) that drains during focus and fills during Flowmodoro. Tap the ring to pause/resume. Skip button advances to the next phase. Session dots above the ring show loop position; tapping dots resets the loop. State labels: "Tap to Focus" (paused/idle), "Focus" (running), "Tap to Rest" (break paused), "Rest" (break running).
+**Timer screen:** circular SVG progress ring (220px) that fills as time elapses (0 → 1) in both modes. Regular Pomodoro fills linearly; Flowmodoro fills asymptotically toward 1. Tap the ring to pause/resume. Skip button advances to the next phase. Session dots above the ring show loop position; tapping dots resets the loop. State labels: "Tap to Focus" (paused/idle), "Focus" (running), "Tap to Rest" (break paused), "Rest" (break running).
 
-**Session flow:** focus → short break → focus → … → focus → long break → repeat. Auto-Start Breaks/Focus settings control whether the next phase starts automatically. Sessions only count as completed if elapsed time ≥ "Count Session After" threshold (default 50%).
+**Session flow:** focus → short break → focus → … → focus → long break → repeat. The break shares the same loop dot as the focus that preceded it; loopPosition advances when break → focus transitions. Auto-Start Breaks/Focus settings control whether the next phase starts automatically. Sessions only count as completed if elapsed time ≥ "Count Session After" threshold (default 50%).
 
-**Flowmodoro mode:** ring counts up instead of down. User ends focus by pressing Skip. Break duration = elapsed ÷ Break Ratio.
+**Flowmodoro mode:** ring fills asymptotically (0 → 0.75 linearly to planned duration, then 0.75 → 1 asymptotically for overtime). User ends focus by pressing Skip. Break duration = elapsed ÷ Break Ratio.
 
 **Stats screen:** Day/Week/Month/Year range switcher with hero focus-time value, 3 stat chips, a horizontally scrollable bar chart, and detail rows. "Full Analysis" opens a full-screen panel with a GitHub-style calendar heatmap, hour-of-day/day-of-week charts, session histogram, density heatmap, all-time totals, personal records, and rate metrics.
 
