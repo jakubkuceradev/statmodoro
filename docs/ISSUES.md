@@ -63,10 +63,10 @@ Write a full unit test suite covering every state transition, loop cycling, auto
 - [ ] Loop correctly cycles: focus → short break → focus → … → focus → long break → focus (session 1)
 - [ ] The final break of each loop is always the long break
 - [ ] Auto-Start Breaks and Auto-Start Focus settings are respected on each phase transition
-- [ ] Skip marks focus session completed only if elapsed ≥ Count Session After threshold
-- [ ] Skip on a break always discards silently (no completion recorded)
+- [ ] Skip on focus sets endReason='skip'; credit is derived at stats time from netActiveMs / plannedDuration
+- [ ] Skip on a break advances to focus with no SessionRecord written
 - [ ] Loop reset does not interrupt the running timer; only loop position changes
-- [ ] Settings changes update `plannedDuration` immediately; `remainingMs` is unchanged
+- [ ] Duration settings take effect on the next session; `plannedDuration` is frozen for the current session
 - [ ] `endTimestamp` is written to localStorage on every tick while running
 - [ ] On resume, remaining time is derived from `endTimestamp`; expired sessions advance state
 - [ ] Full timer state persists across page refresh
@@ -166,7 +166,6 @@ interface SessionRecord {
   plannedDuration: number     // ms, from settings at session start
   sessionType: 'focus' | 'short_break' | 'long_break'
   mode: 'pomodoro' | 'flowmodoro'
-  completed: boolean          // crossed Count Session After threshold
   flowmodoroDerivedBreakMs?: number  // only for flowmodoro focus sessions
   events: TimerEvent[]
 }

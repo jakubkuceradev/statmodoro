@@ -207,13 +207,12 @@ export interface TimerEvent {
 export type SessionType = 'focus' | 'short_break' | 'long_break'
 export type SessionMode = 'pomodoro' | 'flowmodoro'
 
-// Why 'skip_credited' vs 'natural'? For Flowmodoro there is no fixed endpoint — every
-// focus ending is user-initiated, so elapsed vs. plannedDuration cannot distinguish them.
-// For Pomodoro the distinction matters for future analytics (skip rate, momentum).
-// 'abandoned' is written when RESUME_FROM_BACKGROUND finds endTimestamp too far in the
-// past — see abandoned session detection in the reducer section.
-// Skipped BREAKS are not written at all (endReason never appears on break records).
-export type EndReason = 'natural' | 'skip_credited' | 'skip_discarded' | 'abandoned'
+// 'skip' — user pressed Skip. Whether the session counts toward stats is derived at
+// query time from netActiveMs / plannedDuration >= threshold, so changing the threshold
+// applies consistently to all history rather than freezing a judgment at write time.
+// 'abandoned' — session was too stale to auto-complete on resume (future feature).
+// Skipped BREAKS produce no SessionRecord at all.
+export type EndReason = 'natural' | 'skip' | 'abandoned'
 
 export interface SessionRecord {
   // Meta
@@ -229,7 +228,6 @@ export interface SessionRecord {
   sessionType: SessionType
   mode: SessionMode
   endReason: EndReason
-  completed: boolean              // elapsed net time ≥ Count Session After threshold
 
   // Loop context (snapshot at session start)
   sessionIndex: number            // 1-based position within the loop
@@ -322,7 +320,7 @@ export type TimerAction =
   | { type: 'TICK'; now: number }
   | { type: 'SESSION_END' }
   | { type: 'LOOP_RESET' }
-  | { type: 'RESUME_FROM_BACKGROUND'; now: number }
+  | { type: 'ABANDONED_SESSION'; now: number }
   | { type: 'SETTINGS_CHANGED'; settings: Settings }
   | { type: 'RESTORE'; state: TimerState }
 ```
@@ -586,14 +584,15 @@ break_paused
   LOOP_RESET   → break_paused (loopPosition = 0; current break type/duration unchanged)
 
 [all states]
-  SETTINGS_CHANGED → plannedDuration updated to new setting value; remainingMs unchanged;
-                     loopPosition = loopPosition % settings.sessionsPerLoop (handles loop size reduction)
+  SETTINGS_CHANGED → plannedDuration unchanged (frozen at session start; new durations take
+                     effect on the next session); remainingMs unchanged;
+                     loopPosition clamped to sessionsPerLoop - 1 if sessionsPerLoop shrinks
   RESTORE          → hydrate from localStorage
-  RESUME_FROM_BACKGROUND → recalculate remainingMs from endTimestamp
-                     Abandoned session detection: if (now - endTimestamp) > plannedDuration + 10_min,
-                     the session is too stale to treat as naturally completed. Write it with
-                     endReason='abandoned', completed=false, then advance to idle. The 10-minute
-                     grace covers brief tab/lid closes; anything beyond that is a genuine abandon.
+  ABANDONED_SESSION → future: abandoned session detection. If (now - endTimestamp) >
+                     plannedDuration + 10_min, write endReason='abandoned' and go idle.
+                     Not implemented yet — the clock provider handles expiry via SESSION_END;
+                     normal resume requires no reducer action since remainingMs is always
+                     derived from endTimestamp - Date.now() in TimerClockProvider.
 ```
 
 ### Loop position logic
@@ -757,7 +756,7 @@ function useVisibilityChange(callback: () => void) {
 }
 ```
 
-Used by `TimerClockProvider` to dispatch `RESUME_FROM_BACKGROUND` when the tab becomes visible.
+Used by `TimerClockProvider` to dispatch `ABANDONED_SESSION` when the tab becomes visible after a long absence.
 
 ---
 
@@ -767,7 +766,7 @@ Used by `TimerClockProvider` to dispatch `RESUME_FROM_BACKGROUND` when the tab b
 
 ```typescript
 function computeFillFraction(state: TimerState, settings: Settings): number {
-  if (state.phase === 'idle') return 0
+  if (state.phase === 'idle') return 1
 
   const isFlowmodoro = settings.mode === 'flowmodoro' && state.sessionType === 'focus'
 
@@ -930,7 +929,7 @@ All animations are CSS transitions — no animation library (Framer Motion, etc.
 | Collapse on write | lib/db/sessions.ts collapses TimerEvent[] → SessionRecord on completion | Reduces query-time work to zero; endReason is unambiguous; TimerEvent[] never persisted |
 | Timezone anchoring | tzOffsetMinutes per record | Prevents historical data from shifting silently when user travels |
 | DST / hourly binning | Local clock hour | Matches user expectation; 25-hour autumn days are accepted as the less-surprising tradeoff |
-| Abandoned session detection | Grace period = plannedDuration + 10 min in RESUME_FROM_BACKGROUND | Prevents stale endTimestamps from injecting phantom completed sessions |
+| Abandoned session detection | Grace period = plannedDuration + 10 min in ABANDONED_SESSION | Prevents stale endTimestamps from injecting phantom completed sessions |
 | Migration function | Single migrate() in lib/db/migrations.ts, used by upgrade() and importAll() | One function, one test surface for both in-place and import migrations |
 | Export envelope | Versioned JSON object wrapping sessions[] | Allows graceful forward/backward compat; v1 importing v2 can refuse with a clear message |
 | Ring fill | Pure function outside React | Independently testable; no component logic |
