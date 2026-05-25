@@ -182,7 +182,7 @@ A Flowmodoro mode (focus as long as you want, break proportional to focus time) 
 
 89. The ring button receives focus automatically when the extension popup opens, enabling Enter to pause/resume without a click.
 90. All destructive actions (Clear All History, Reset All Settings, Import) are gated behind a confirmation dialog.
-91. Settings changes take effect immediately: `plannedDuration` updates, `remainingMs` is unchanged, the ring recalculates its fill position.
+91. Duration settings take effect on the next session; `plannedDuration` is frozen at session start so the current session's ring fill and credit threshold are unaffected.
 
 ---
 
@@ -218,8 +218,7 @@ Sessions are stored as canonical records — not event logs. The reducer uses a 
   netActiveMs: number,         // precomputed: wall time minus pause durations
   sessionType: 'focus' | 'short_break' | 'long_break',
   mode: 'pomodoro' | 'flowmodoro',
-  endReason: 'natural' | 'skip_credited' | 'skip_discarded' | 'abandoned',
-  completed: boolean,          // crossed Count Session After threshold
+  endReason: 'natural' | 'skip' | 'abandoned',
   sessionIndex: number,        // 1-based position within loop at session start
   plannedDuration: number,     // ms; Flowmodoro uses configured Focus Duration as reference
   flowmodoroDerivedBreakMs?: number,  // focus sessions only
@@ -289,7 +288,7 @@ Tests should verify observable behaviour, not implementation details. A good tes
 
 **Flowmodoro ring math** — medium priority. Pure function. Test boundary at `t = target` (exactly 75%), behaviour well past target (approaches but never reaches 100%), and ratio-derived break duration.
 
-**Credit threshold** — medium priority. Test sessions just below threshold (not counted), exactly at threshold (counted), and above threshold (counted). Test behaviour on break skip (never counted regardless).
+**Credit threshold** — medium priority. Pure derivation: `netActiveMs / plannedDuration >= threshold`. Test just below, at, and above the threshold. Credit is computed at stats time so threshold changes apply to all history.
 
 **IndexedDB persistence layer** — medium priority. Test write → read round-trip for session records. Test that import replaces all records correctly.
 
