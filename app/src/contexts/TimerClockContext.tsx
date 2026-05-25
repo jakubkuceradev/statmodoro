@@ -17,11 +17,18 @@ export const TimerClockProvider = ({ children }: { children: ReactNode }) => {
     endTimestamp !== null ? Math.max(0, endTimestamp - Date.now()) : state.remainingMs,
   )
 
-  // When not running, keep the display in sync with the reducer's remainingMs
-  // (covers paused state, new session after skip, settings changes)
+  // Keep display in sync with reducer remainingMs when paused/idle
   useEffect(() => {
     if (!isRunning) setRemainingMs(state.remainingMs)
   }, [isRunning, state.remainingMs])
+
+  // When endTimestamp changes while running (running→running transition like SKIP),
+  // immediately sync the display so it doesn't lag until the next interval tick
+  useEffect(() => {
+    if (isRunning && endTimestamp !== null) {
+      setRemainingMs(Math.max(0, endTimestamp - Date.now()))
+    }
+  }, [endTimestamp, isRunning])
 
   // Running interval: derive remaining from endTimestamp and fire SESSION_END at zero
   const prevRemainingRef = useRef(Infinity)

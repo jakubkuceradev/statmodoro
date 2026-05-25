@@ -32,11 +32,11 @@ export function reducer(state: TimerState, action: TimerAction, settings: Settin
           : settings.shortBreakDuration * 60_000
         return {
           ...state,
-          phase: settings.autoStartBreaks ? 'break_running' : 'break_paused',
+          phase: 'break_running',
           sessionType,
           plannedDuration,
           remainingMs: plannedDuration,
-          loopPosition: isLastSession ? state.loopPosition : state.loopPosition + 1,
+          loopPosition: state.loopPosition,
         }
       }
 
@@ -44,11 +44,11 @@ export function reducer(state: TimerState, action: TimerAction, settings: Settin
       const plannedDuration = settings.focusDuration * 60_000
       return {
         ...state,
-        phase: settings.autoStartFocus ? 'focus_running' : 'focus_paused',
+        phase: 'focus_running',
         sessionType: 'focus',
         plannedDuration,
         remainingMs: plannedDuration,
-        loopPosition: isLongBreak ? 0 : state.loopPosition,
+        loopPosition: isLongBreak ? 0 : state.loopPosition + 1,
       }
     }
 
@@ -70,7 +70,7 @@ export function reducer(state: TimerState, action: TimerAction, settings: Settin
           sessionType,
           plannedDuration,
           remainingMs: plannedDuration,
-          loopPosition: isLastSession ? state.loopPosition : state.loopPosition + 1,
+          loopPosition: state.loopPosition,
         }
       }
 
@@ -82,7 +82,7 @@ export function reducer(state: TimerState, action: TimerAction, settings: Settin
         sessionType: 'focus',
         plannedDuration,
         remainingMs: plannedDuration,
-        loopPosition: isLongBreak ? 0 : state.loopPosition,
+        loopPosition: isLongBreak ? 0 : state.loopPosition + 1,
       }
     }
 

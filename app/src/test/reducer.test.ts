@@ -22,15 +22,15 @@ describe('SETTINGS_CHANGED', () => {
 })
 
 describe('SKIP', () => {
-  it('advances from focus to a break', () => {
+  it('advances from focus to a break, always running regardless of autoStartBreaks', () => {
     const next = reducer(makeState({ phase: 'focus_running' }), { type: 'SKIP' }, makeSettings({ autoStartBreaks: false }))
-    expect(next.phase).toBe('break_paused')
+    expect(next.phase).toBe('break_running')
     expect(next.sessionType).toBe('short_break')
   })
 
-  it('advances from break to focus', () => {
+  it('advances from break to focus, always running regardless of autoStartFocus', () => {
     const next = reducer(makeState({ phase: 'break_running', sessionType: 'short_break' }), { type: 'SKIP' }, makeSettings({ autoStartFocus: false }))
-    expect(next.phase).toBe('focus_paused')
+    expect(next.phase).toBe('focus_running')
     expect(next.sessionType).toBe('focus')
   })
 })
@@ -47,9 +47,9 @@ describe('LOOP_RESET', () => {
 })
 
 describe('loop cycling', () => {
-  it('increments loopPosition when a non-last focus session ends', () => {
+  it('increments loopPosition when a non-last break ends', () => {
     const settings = makeSettings({ sessionsPerLoop: 4 })
-    const next = reducer(makeState({ phase: 'focus_running', loopPosition: 1 }), { type: 'SESSION_END' }, settings)
+    const next = reducer(makeState({ phase: 'break_running', sessionType: 'short_break', loopPosition: 1 }), { type: 'SESSION_END' }, settings)
     expect(next.loopPosition).toBe(2)
   })
 
