@@ -28,25 +28,23 @@ export const ProgressRing = ({ phase, fillFraction, timeDisplay, stateLabel, onT
   const isRunning = phase === 'focus_running' || phase === 'break_running'
   const isPaused  = phase === 'focus_paused'  || phase === 'break_paused'
 
-  // Running: accent stroke; paused: dim stroke. Hover inverts.
-  const stroke = (isRunning && !hovered) || (isPaused && hovered)
-    ? 'var(--accent)'
-    : 'var(--accent-dim)'
+  const stroke = hovered
+    ? 'var(--accent-mid)'
+    : isRunning ? 'var(--accent)' : 'var(--accent-dim)'
 
-  let timeColor = 'var(--color-text-primary)'
-  if (isRunning && hovered) {
-    timeColor = 'var(--color-text-paused)'
-  } else if (isPaused) {
-    timeColor = hovered ? 'var(--color-text-paused-hover)' : 'var(--color-text-paused)'
-  }
+  const timeColor = hovered
+    ? 'var(--color-text-hover)'
+    : isPaused ? 'var(--color-text-paused)' : 'var(--color-text-primary)'
 
   const dashLength = Math.max(0, fillFraction * CIRCUMFERENCE)
   const [mins, secs] = timeDisplay
 
+  const handleTap = () => { setHovered(false); onTap() }
+
   return (
     <button
       aria-label={ringLabel(phase)}
-      onClick={onTap}
+      onClick={handleTap}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
