@@ -68,19 +68,19 @@ describe('skip button', () => {
     expect(screen.getByRole('button', { name: /skip/i })).toBeVisible()
   })
 
-  it('skipping from running focus shows "Tap to Rest" (break paused by default)', async () => {
+  it('skipping from running focus always starts the break running', async () => {
     render(<App />)
     await userEvent.click(screen.getByRole('button', { name: /start focus/i }))
     await userEvent.click(screen.getByRole('button', { name: /skip/i }))
-    expect(screen.getByText('Tap to Rest')).toBeVisible()
+    expect(screen.getByText('Rest')).toBeVisible()
   })
 
-  it('skipping again from break returns to "Tap to Focus"', async () => {
+  it('skipping again from break always starts the next focus running', async () => {
     render(<App />)
     await userEvent.click(screen.getByRole('button', { name: /start focus/i }))
     await userEvent.click(screen.getByRole('button', { name: /skip/i }))
     await userEvent.click(screen.getByRole('button', { name: /skip/i }))
-    expect(screen.getByText('Tap to Focus')).toBeVisible()
+    expect(screen.getByText('Focus')).toBeVisible()
   })
 
   it('break time shown after skipping focus matches short break duration', async () => {
@@ -119,8 +119,8 @@ describe('auto-start settings', () => {
     setSettings({ autoStartFocus: true })
     render(<App />)
     await userEvent.click(screen.getByRole('button', { name: /start focus/i }))
-    await userEvent.click(screen.getByRole('button', { name: /skip/i })) // focus → break paused
-    await userEvent.click(screen.getByRole('button', { name: /skip/i })) // break → focus running (auto)
+    await userEvent.click(screen.getByRole('button', { name: /skip/i })) // focus → break running
+    await userEvent.click(screen.getByRole('button', { name: /skip/i })) // break → focus running
     expect(screen.getByText('Focus')).toBeVisible()
   })
 })
@@ -145,8 +145,8 @@ describe('loop cycling', () => {
     await userEvent.click(screen.getByRole('button', { name: /skip/i })) // → short break
     await userEvent.click(screen.getByRole('button', { name: /skip/i })) // → session 2 focus
     await userEvent.click(screen.getByRole('button', { name: /skip/i })) // → long break
-    await userEvent.click(screen.getByRole('button', { name: /skip/i })) // → session 1 focus
-    expect(screen.getByText('Tap to Focus')).toBeVisible()
+    await userEvent.click(screen.getByRole('button', { name: /skip/i })) // → session 1 focus (running)
+    expect(screen.getByText('Focus')).toBeVisible()
   })
 })
 
