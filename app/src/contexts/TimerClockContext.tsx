@@ -17,6 +17,15 @@ export const TimerClockProvider = ({ children }: { children: ReactNode }) => {
     endTimestamp !== null ? Math.max(0, endTimestamp - Date.now()) : state.remainingMs,
   )
 
+  // Derived-state: when plannedDuration changes a new session has started.
+  // Reset remainingMs synchronously during render so the stale clock value (0 from the
+  // last tick of the previous session) never reaches the DOM and produces a wrong fill.
+  const [prevPlannedDuration, setPrevPlannedDuration] = useState(state.plannedDuration)
+  if (state.plannedDuration !== prevPlannedDuration) {
+    setPrevPlannedDuration(state.plannedDuration)
+    setRemainingMs(state.remainingMs)
+  }
+
   // Keep display in sync with reducer remainingMs when paused/idle
   useEffect(() => {
     if (!isRunning) setRemainingMs(state.remainingMs)

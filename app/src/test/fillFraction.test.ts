@@ -3,15 +3,15 @@ import { computeFillFraction } from '../lib/timer/fillFraction'
 import { makeSettings, makeState } from './helpers'
 
 describe('computeFillFraction', () => {
-  it('returns 1 when idle', () => {
-    expect(computeFillFraction(makeState({ phase: 'idle' }), makeSettings())).toBe(1)
+  it('returns 0 when idle', () => {
+    expect(computeFillFraction(makeState({ phase: 'idle' }), makeSettings())).toBe(0)
   })
 
-  it('drains from 1 to 0 in pomodoro mode', () => {
+  it('fills from 0 to 1 in pomodoro mode', () => {
     const planned = 25 * 60_000
     const remaining = 10 * 60_000
     const state = makeState({ phase: 'focus_running', plannedDuration: planned, remainingMs: remaining })
-    expect(computeFillFraction(state, makeSettings({ mode: 'pomodoro' }))).toBeCloseTo(remaining / planned)
+    expect(computeFillFraction(state, makeSettings({ mode: 'pomodoro' }))).toBeCloseTo(1 - remaining / planned)
   })
 
   it('fills linearly to 0.75 at the target in flowmodoro focus', () => {
