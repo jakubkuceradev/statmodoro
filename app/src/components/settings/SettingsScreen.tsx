@@ -4,6 +4,10 @@ import { Screen } from '../layout/Screen'
 import { Stepper } from './Stepper'
 import { Toggle } from './Toggle'
 
+const actionBtnCls = 'font-sans text-[12px] bg-transparent border-none cursor-pointer p-0 opacity-85 hover:opacity-100'
+const dangerBtnCls = 'font-sans text-[12px] bg-transparent border-none cursor-pointer p-0 opacity-80 hover:opacity-100'
+const sliderCls = 'w-[100px] h-[3px] cursor-pointer appearance-none rounded-full outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[14px] [&::-webkit-slider-thumb]:h-[14px] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-moz-range-thumb]:w-[14px] [&::-moz-range-thumb]:h-[14px] [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-none'
+
 export const SettingsScreen = () => {
   const { settings, updateSettings } = useSettings()
 
@@ -91,7 +95,7 @@ export const SettingsScreen = () => {
             min={0} max={1} step={0.01}
             value={settings.volume}
             onChange={e => updateSettings({ volume: parseFloat(e.target.value) })}
-            className="w-[100px] h-[3px] cursor-pointer appearance-none rounded-full outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[14px] [&::-webkit-slider-thumb]:h-[14px] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-moz-range-thumb]:w-[14px] [&::-moz-range-thumb]:h-[14px] [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-none"
+            className={sliderCls}
             style={{
               background: `linear-gradient(to right, var(--accent) ${settings.volume * 100}%, var(--color-surface-raised) ${settings.volume * 100}%)`,
             }}
@@ -105,7 +109,7 @@ export const SettingsScreen = () => {
           <button
             aria-label="Import Data"
             onClick={() => {}}
-            className="font-sans text-[12px] bg-transparent border-none cursor-pointer p-0 opacity-85 hover:opacity-100"
+            className={actionBtnCls}
             style={{ color: '#0A84FF', transition: 'opacity var(--ease-fast)' }}
           >
             Import
@@ -116,7 +120,7 @@ export const SettingsScreen = () => {
           <button
             aria-label="Export Data"
             onClick={() => {}}
-            className="font-sans text-[12px] bg-transparent border-none cursor-pointer p-0 opacity-85 hover:opacity-100"
+            className={actionBtnCls}
             style={{ color: '#0A84FF', transition: 'opacity var(--ease-fast)' }}
           >
             Export
@@ -127,7 +131,7 @@ export const SettingsScreen = () => {
           <button
             aria-label="Clear All History"
             onClick={() => {}}
-            className="font-sans text-[12px] bg-transparent border-none cursor-pointer p-0 opacity-80 hover:opacity-100"
+            className={dangerBtnCls}
             style={{ color: '#FF453A', transition: 'opacity var(--ease-fast)' }}
           >
             Remove
@@ -138,7 +142,7 @@ export const SettingsScreen = () => {
           <button
             aria-label="Reset All Settings"
             onClick={() => {}}
-            className="font-sans text-[12px] bg-transparent border-none cursor-pointer p-0 opacity-80 hover:opacity-100"
+            className={dangerBtnCls}
             style={{ color: '#FF453A', transition: 'opacity var(--ease-fast)' }}
           >
             Reset

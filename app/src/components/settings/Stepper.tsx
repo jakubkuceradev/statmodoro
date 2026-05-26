@@ -10,6 +10,8 @@ interface StepperProps {
   unit?: string
 }
 
+const stepBtnCls = 'flex items-center justify-center p-0 bg-transparent border-none cursor-pointer w-[18px] h-[18px] text-[15px] text-text-muted disabled:opacity-30 disabled:cursor-default'
+
 export const Stepper = ({ value, min, max, step, onChange, label, unit }: StepperProps) => {
   const [raw, setRaw] = useState<string | null>(null)
   const displayed = raw !== null ? raw : String(value)
@@ -30,7 +32,7 @@ export const Stepper = ({ value, min, max, step, onChange, label, unit }: Steppe
         aria-label={`Decrement ${label}`}
         onClick={decrement}
         disabled={value <= min}
-        className="flex items-center justify-center p-0 bg-transparent border-none cursor-pointer w-[18px] h-[18px] text-[15px] text-text-muted disabled:opacity-30 disabled:cursor-default"
+        className={stepBtnCls}
         style={{ transition: 'color var(--ease-fast)' }}
       >
         −
@@ -58,7 +60,7 @@ export const Stepper = ({ value, min, max, step, onChange, label, unit }: Steppe
         aria-label={`Increment ${label}`}
         onClick={increment}
         disabled={value >= max}
-        className="flex items-center justify-center p-0 bg-transparent border-none cursor-pointer w-[18px] h-[18px] text-[15px] text-text-muted disabled:opacity-30 disabled:cursor-default"
+        className={stepBtnCls}
         style={{ transition: 'color var(--ease-fast)' }}
       >
         +
