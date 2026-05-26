@@ -47,6 +47,21 @@ describe('session persistence', () => {
     })
   })
 
+  it('records a real startedAt timestamp (not zero) and correct netActiveMs on natural expiry', async () => {
+    setSettings({ focusDuration: 1 })
+    fakeDateAndIntervals()
+    const before = Date.now()
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /start focus/i }))
+    await act(async () => { vi.advanceTimersByTime(61_000) })
+    await waitFor(async () => {
+      const sessions = await getAllSessions()
+      const focus = sessions.find(s => s.sessionType === 'focus')
+      expect(focus?.startedAt).toBeGreaterThanOrEqual(before)
+      expect(focus?.netActiveMs).toBe(60_000) // equals plannedDuration, no pauses
+    })
+  })
+
   it('writes a focus record with endReason=skip when the user skips', async () => {
     setSettings({ focusDuration: 25, countSessionAfterPercent: 0 })
     fakeDateAndIntervals()
