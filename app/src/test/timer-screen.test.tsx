@@ -153,32 +153,32 @@ describe('loop cycling', () => {
 describe('play/pause button', () => {
   it('shows play button when idle', () => {
     render(<App />)
-    expect(screen.getByRole('button', { name: 'Play' })).toBeVisible()
+    expect(screen.getByRole('button', { name: /^play$/i })).toBeVisible()
   })
 
   it('shows pause button while running', async () => {
     render(<App />)
-    await userEvent.click(screen.getByRole('button', { name: 'Play' }))
-    expect(screen.getByRole('button', { name: 'Pause' })).toBeVisible()
+    await userEvent.click(screen.getByRole('button', { name: /^play$/i }))
+    expect(screen.getByRole('button', { name: /^pause$/i })).toBeVisible()
   })
 
   it('shows play button while paused', async () => {
     render(<App />)
-    await userEvent.click(screen.getByRole('button', { name: 'Play' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Pause' }))
-    expect(screen.getByRole('button', { name: 'Play' })).toBeVisible()
+    await userEvent.click(screen.getByRole('button', { name: /^play$/i }))
+    await userEvent.click(screen.getByRole('button', { name: /^pause$/i }))
+    expect(screen.getByRole('button', { name: /^play$/i })).toBeVisible()
   })
 
   it('play button starts focus session', async () => {
     render(<App />)
-    await userEvent.click(screen.getByRole('button', { name: 'Play' }))
+    await userEvent.click(screen.getByRole('button', { name: /^play$/i }))
     expect(screen.getByText('Focus')).toBeVisible()
   })
 
   it('pause button pauses the session', async () => {
     render(<App />)
-    await userEvent.click(screen.getByRole('button', { name: 'Play' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Pause' }))
+    await userEvent.click(screen.getByRole('button', { name: /^play$/i }))
+    await userEvent.click(screen.getByRole('button', { name: /^pause$/i }))
     expect(screen.getByText('Tap to Focus')).toBeVisible()
   })
 })
@@ -208,7 +208,7 @@ describe('stop button', () => {
     setSettings({ focusDuration: 7 })
     render(<App />)
     await userEvent.click(screen.getByRole('button', { name: /start focus/i }))
-    await userEvent.click(screen.getByRole('button', { name: 'Pause' }))
+    await userEvent.click(screen.getByRole('button', { name: /^pause$/i }))
     await userEvent.click(screen.getByRole('button', { name: /stop/i }))
     expect(screen.getByText('Tap to Focus')).toBeVisible()
     expect(screen.getByRole('timer', { name: mmss(7) })).toBeVisible()
