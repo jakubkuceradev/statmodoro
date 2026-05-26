@@ -6,6 +6,8 @@ import { computeFillFraction } from '../../lib/timer/fillFraction'
 import { ProgressRing } from './ProgressRing'
 import { SessionDots } from './SessionDots'
 import { SkipButton } from './SkipButton'
+import { StopButton } from './StopButton'
+import { PlayPauseButton } from './PlayPauseButton'
 
 const stateLabel = (phase: TimerPhase): string => {
   switch (phase) {
@@ -48,7 +50,11 @@ export const TimerScreen = () => {
         onTap={() => dispatch({ type: 'TAP_RING' })}
       />
 
-      <SkipButton onSkip={() => dispatch({ type: 'SKIP' })} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+        <StopButton onStop={() => dispatch({ type: 'STOP' })} />
+        <PlayPauseButton phase={state.phase} onPlayPause={() => dispatch({ type: 'TAP_RING' })} />
+        <SkipButton onSkip={() => dispatch({ type: 'SKIP' })} />
+      </div>
     </section>
   )
 }

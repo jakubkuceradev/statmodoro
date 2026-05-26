@@ -150,6 +150,108 @@ describe('loop cycling', () => {
   })
 })
 
+describe('play/pause button', () => {
+  it('shows play button when idle', () => {
+    render(<App />)
+    expect(screen.getByRole('button', { name: 'Play' })).toBeVisible()
+  })
+
+  it('shows pause button while running', async () => {
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: 'Play' }))
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeVisible()
+  })
+
+  it('shows play button while paused', async () => {
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: 'Play' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Pause' }))
+    expect(screen.getByRole('button', { name: 'Play' })).toBeVisible()
+  })
+
+  it('play button starts focus session', async () => {
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: 'Play' }))
+    expect(screen.getByText('Focus')).toBeVisible()
+  })
+
+  it('pause button pauses the session', async () => {
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: 'Play' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Pause' }))
+    expect(screen.getByText('Tap to Focus')).toBeVisible()
+  })
+})
+
+describe('stop button', () => {
+  it('is present on the timer screen', () => {
+    render(<App />)
+    expect(screen.getByRole('button', { name: /stop/i })).toBeVisible()
+  })
+
+  it('stopping from running focus returns to "Tap to Focus" label', async () => {
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: /start focus/i }))
+    await userEvent.click(screen.getByRole('button', { name: /stop/i }))
+    expect(screen.getByText('Tap to Focus')).toBeVisible()
+  })
+
+  it('stopping from running focus resets display time to focus duration', async () => {
+    setSettings({ focusDuration: 7 })
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: /start focus/i }))
+    await userEvent.click(screen.getByRole('button', { name: /stop/i }))
+    expect(screen.getByRole('timer', { name: mmss(7) })).toBeVisible()
+  })
+
+  it('stopping from paused focus resets to paused with full duration', async () => {
+    setSettings({ focusDuration: 7 })
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: /start focus/i }))
+    await userEvent.click(screen.getByRole('button', { name: 'Pause' }))
+    await userEvent.click(screen.getByRole('button', { name: /stop/i }))
+    expect(screen.getByText('Tap to Focus')).toBeVisible()
+    expect(screen.getByRole('timer', { name: mmss(7) })).toBeVisible()
+  })
+
+  it('stopping from running break shows paused break label', async () => {
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: /start focus/i }))
+    await userEvent.click(screen.getByRole('button', { name: /skip/i }))
+    await userEvent.click(screen.getByRole('button', { name: /stop/i }))
+    expect(screen.getByText('Tap to Rest')).toBeVisible()
+  })
+
+  it('stopping from running break resets display time to full break duration', async () => {
+    setSettings({ focusDuration: 7, shortBreakDuration: 3 })
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: /start focus/i }))
+    await userEvent.click(screen.getByRole('button', { name: /skip/i }))
+    await userEvent.click(screen.getByRole('button', { name: /stop/i }))
+    expect(screen.getByRole('timer', { name: mmss(3) })).toBeVisible()
+  })
+
+  it('double-stop (stop then stop again from reset state) goes to idle and resets loop', async () => {
+    setSettings({ sessionsPerLoop: 4 })
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: /start focus/i }))
+    await userEvent.click(screen.getByRole('button', { name: /skip/i })) // → short break
+    await userEvent.click(screen.getByRole('button', { name: /skip/i })) // → focus loopPos 1
+    await userEvent.click(screen.getByRole('button', { name: /stop/i })) // → focus_paused, loopPos preserved
+    await userEvent.click(screen.getByRole('button', { name: /stop/i })) // → idle, loopPos reset to 0
+    expect(screen.getByText('Tap to Focus')).toBeVisible()
+  })
+
+  it('stopping from a break restores focus accent mode', async () => {
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: /start focus/i }))
+    await userEvent.click(screen.getByRole('button', { name: /skip/i }))
+    expect(document.querySelector('[data-mode="rest"]')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /stop/i }))
+    expect(document.querySelector('[data-mode="rest"]')).toBeInTheDocument()
+  })
+})
+
 describe('accent mode', () => {
   it('app enters rest mode when a break starts', async () => {
     render(<App />)

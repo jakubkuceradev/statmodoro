@@ -32,6 +32,7 @@ export type TimerAction =
   | { type: 'SKIP' }
   | { type: 'SESSION_END' }
   | { type: 'LOOP_RESET' }
+  | { type: 'STOP' }
   | { type: 'SETTINGS_CHANGED'; settings: Settings }
   | { type: 'ABANDONED_SESSION'; now: number }
   | { type: 'RESTORE'; state: TimerState }

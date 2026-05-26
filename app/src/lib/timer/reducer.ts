@@ -9,7 +9,6 @@ export function reducer(state: TimerState, action: TimerAction, settings: Settin
           ...state,
           phase: 'focus_running',
           sessionType: 'focus',
-          loopPosition: 0,
           plannedDuration: settings.focusDuration * 60_000,
           remainingMs: settings.focusDuration * 60_000,
         }
@@ -54,6 +53,35 @@ export function reducer(state: TimerState, action: TimerAction, settings: Settin
 
     case 'LOOP_RESET':
       return { ...state, loopPosition: 0 }
+
+    case 'STOP': {
+      const isPaused = state.phase === 'focus_paused' || state.phase === 'break_paused'
+      const alreadyReset = state.phase === 'idle' || (isPaused && state.remainingMs >= state.plannedDuration)
+      if (alreadyReset) {
+        const focusDuration = settings.focusDuration * 60_000
+        return {
+          ...state,
+          phase: 'idle',
+          loopPosition: 0,
+          sessionType: 'focus',
+          plannedDuration: focusDuration,
+          remainingMs: focusDuration,
+          currentSessionEvents: [],
+          currentSessionId: null,
+        }
+      }
+      // Pause in the same phase type, reset timer to the start of the current session
+      const pausedPhase = state.phase === 'focus_running' || state.phase === 'focus_paused'
+        ? 'focus_paused'
+        : 'break_paused'
+      return {
+        ...state,
+        phase: pausedPhase,
+        remainingMs: state.plannedDuration,
+        currentSessionEvents: [],
+        currentSessionId: null,
+      }
+    }
 
     case 'SESSION_END': {
       const isFocus = state.phase === 'focus_running' || state.phase === 'focus_paused'
