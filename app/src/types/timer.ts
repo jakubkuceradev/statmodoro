@@ -28,11 +28,11 @@ export interface TimerState {
 }
 
 export type TimerAction =
-  | { type: 'PLAY_PAUSE' }
-  | { type: 'SKIP' }
-  | { type: 'SESSION_END' }
+  | { type: 'PLAY_PAUSE'; now?: number; sessionId?: string }
+  | { type: 'SKIP'; now?: number; sessionId?: string }
+  | { type: 'SESSION_END'; now?: number; sessionId?: string }
   | { type: 'LOOP_RESET' }
-  | { type: 'STOP' }
+  | { type: 'STOP'; now?: number }
   | { type: 'SETTINGS_CHANGED'; settings: Settings }
   | { type: 'ABANDONED_SESSION'; now: number }
   | { type: 'RESTORE'; state: TimerState }

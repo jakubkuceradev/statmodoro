@@ -223,6 +223,7 @@ Sessions are stored as canonical records — not event logs. The reducer uses a 
   startedAt: number,           // epoch ms; IndexedDB index key
   endedAt: number,             // epoch ms of terminal event
   netActiveMs: number,         // precomputed: wall time minus pause durations
+  pauses: { pausedAt: number; resumedAt: number }[],  // precomputed from event list on collapse
   sessionType: 'focus' | 'short_break' | 'long_break',
   mode: 'pomodoro' | 'flowmodoro',
   endReason: 'natural' | 'skip' | 'abandoned' | 'stopped',
@@ -233,7 +234,7 @@ Sessions are stored as canonical records — not event logs. The reducer uses a 
 }
 ```
 
-Skipped breaks produce no record. Break compliance is `breakRecords.length / completedFocusRecords.length`.
+Skipped breaks produce no record. Break compliance is `breakRecords.length / completedFocusRecords.length`. Completion status is not stored — derived at query time as `netActiveMs / plannedDuration >= countSessionAfterPercent / 100` so threshold changes apply retroactively.
 
 ### Backgrounding Strategy
 On every tick while running, write `endTimestamp = Date.now() + remainingMs` to localStorage. On visibility restore or popup open, derive remaining time from `endTimestamp`. If `endTimestamp` is in the past, treat as naturally completed and advance state.

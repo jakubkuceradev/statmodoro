@@ -202,38 +202,109 @@ Issue 2
 
 ---
 
-## Issue 6 — Stats data layer
+## Issue 6a — Session record storage & event capture
 
 ### What to build
 
-Implement all stats derivation as pure functions over raw `SessionRecord[]` from IndexedDB. No aggregated cache — everything is computed on demand and memoised at the React layer with `useMemo`.
+Implement the full data capture pipeline: the IndexedDB storage layer, the collapse-on-write logic, and the timer context wiring that records sessions on completion.
 
-Functions to implement:
+**IndexedDB setup (`lib/db/index.ts`):** Open the `statmodoro` database at version 1 using `idb`. Create the `sessions` object store with `id` as the keyPath and two indexes: `by-started-at` on `startedAt` (primary time index for all range queries) and `by-session-type` on `sessionType` (for break compliance separation). All future schema changes add migration branches here using `migrate()` from `lib/db/migrations.ts`.
 
-- **Day view:** total focus time, sessions count, best ever single-day session count, avg daily sessions (last 30 days), hourly bar chart data (focus minutes per hour slot), detail rows (avg session length, longest session, total breaks taken)
-- **Week view:** total focus time, sessions this week, best day of week, avg daily focus, daily bar chart, detail rows (avg daily focus, best day, days active, total breaks)
-- **Month view:** total focus time, sessions this month, best week, avg daily focus, daily bar chart, detail rows
-- **Year view:** total focus time, sessions this year, best month, avg monthly focus, monthly bar chart, detail rows
-- **Streaks:** current streak and best streak, using Day Start Time boundary and Daily Streak Goal threshold
-- **Full Analysis inputs:** average focus by hour of day (all-time), average focus by day of week (all-time), session length distribution buckets, 7×24 focus density matrix, all-time totals, personal records, completion rate, break compliance rate, average time to first session per day
+**Storage API (`lib/db/sessions.ts`):** Expose three async functions:
+```ts
+writeSession(record: SessionRecord): Promise<void>
+getAllSessions(): Promise<SessionRecord[]>
+clearAllSessions(): Promise<void>
+```
+Nothing else in the codebase imports from `idb` directly — this is the single async boundary.
 
-Day boundary logic must apply the Day Start Time offset in the user's local timezone.
+**Collapse on write:** The reducer holds `currentSessionEvents: TimerEvent[]` while a session is live. `writeSession` collapses that list into the canonical `SessionRecord` shape before persisting. Derived fields: `startedAt` = timestamp of the first `start` event; `endedAt` = timestamp of the terminal event; `netActiveMs` = wall time minus the sum of all pause-to-resume durations; `pauses` = array of `{ pausedAt, resumedAt }` pairs extracted from the event list; `endReason` = inferred from the terminal action (natural, skip, stopped); `tzOffsetMinutes` = `-(new Date().getTimezoneOffset())` at write time; `schemaVersion: 1`. The raw `TimerEvent[]` never touches IndexedDB.
 
-Write a full unit test suite. Cover: no data, single session, sessions spanning the day boundary, sessions with multiple pauses, streak breaks, streak across month boundaries.
+**Completion status is not stored.** Whether a session counts toward stats is derived at query time: `netActiveMs / plannedDuration >= settings.countSessionAfterPercent / 100`. This ensures threshold changes apply retroactively across all history.
+
+**Timer context wiring:** In `TimerPhaseContext`, a `useEffect` that watches `phase` transitions calls `writeSession` when a focus session ends (phase leaves `focus_running` or `focus_paused`). Skipped breaks produce no record. After writing, call `statsContext.refresh()`.
+
+**`StatsContext` (`contexts/StatsContext.tsx`):** On mount, call `getAllSessions()` and store the result. Expose `sessions`, `loading`, and `refresh()`. `refresh()` re-fetches from IndexedDB and updates state. `clearAll()` calls `clearAllSessions()` then `refresh()`.
+
+**Schema versioning:** `lib/db/migrations.ts` exports `migrate(record: any): SessionRecord` — called by both `upgrade()` and the import path in Issue 8. One function, one test surface.
 
 ### Acceptance criteria
 
-- [ ] All derivation functions are pure (no side effects, no IndexedDB calls)
-- [ ] Day/Week/Month/Year hero values, chips, and bar chart data are correct
-- [ ] Bar chart height percentages are scaled relative to the tallest bar in the view
-- [ ] Streak calculation correctly applies Day Start Time offset
-- [ ] Streak breaks when Daily Streak Goal is not met on a calendar day
-- [ ] All Full Analysis inputs are derivable from raw session records
-- [ ] Unit tests cover all views, all streak edge cases, and zero-data state
+- [ ] IndexedDB store is opened and versioned correctly via `idb`
+- [ ] `by-started-at` and `by-session-type` indexes are created
+- [ ] `writeSession` correctly collapses `TimerEvent[]` into all `SessionRecord` fields
+- [ ] `startedAt`, `endedAt`, `netActiveMs`, and `pauses` are all accurate for sessions with multiple pauses
+- [ ] `pauses` entries have correct `pausedAt` / `resumedAt` timestamps in chronological order
+- [ ] `endReason` is set correctly for natural completion, skip, and stop
+- [ ] `tzOffsetMinutes` is recorded at session start
+- [ ] Focus sessions are written on completion; skipped breaks produce no record
+- [ ] `flowmodoroDerivedBreakMs` is present on Flowmodoro focus session records
+- [ ] `StatsContext` loads sessions on mount and exposes `refresh()`
+- [ ] `TimerPhaseContext` calls `writeSession` then `statsContext.refresh()` on session completion
+- [ ] `clearAllSessions` removes all records; `StatsContext` reflects the empty state after `refresh()`
+- [ ] Write → read round-trip test passes for a session with two pauses
 
 ### Blocked by
 
-Issue 5
+Issues 2, 4
+
+---
+
+## Issue 6b — Stats derivation (pure functions)
+
+### What to build
+
+Implement all stats derivation as pure functions over raw `SessionRecord[]`. No side effects, no IndexedDB calls, no React imports. Everything lives in `src/lib/stats/`.
+
+**Day boundary utility (`lib/stats/bucketDay.ts`):** `bucketDay(timestampMs: number, tzOffsetMinutes: number, dayStartHour: number): string` returns a `"YYYY-MM-DD"` key. This is the single source of truth for day-boundary logic used by every aggregation. All daily aggregation must route through this function — never compute day keys inline.
+
+**Range derivation (`lib/stats/derive.ts`):** `deriveRangeStats(sessions: SessionRecord[], range: StatsRange, settings: Settings, now: number): RangeStats`. One function, four `range` branches.
+
+- **Day:** hero = total `netActiveMs` of focus sessions in today's bucket. Chip 1: session count today. Chip 2: best single-day session count across all history. Chip 3: avg daily session count over the last 30 days. Bars: 24 hourly slots (0–23), each = total focus minutes for sessions whose local start hour matches. `isCurrent` = current local hour. Detail rows: sessions completed · avg session length · longest session · total breaks taken today · current streak · best streak.
+
+- **Week:** hero = focus minutes this calendar week (Mon–Sun). Chip 1: session count this week. Chip 2: label of the day with most focus this week (e.g. "Tue"). Chip 3: avg daily focus this week. Bars: 7 entries Mon–Sun. `isCurrent` = today. Detail rows: sessions completed · avg daily focus · best day · days active · total breaks · current streak · best streak.
+
+- **Month:** hero = focus minutes this calendar month. Chip 1: sessions this month. Chip 2: label of the best week of the month (e.g. "Week 3"). Chip 3: avg daily focus this month. Bars: one entry per day of the month. `isCurrent` = today. Detail rows: sessions completed · avg daily focus · best day · days active · total breaks · current streak · best streak.
+
+- **Year:** hero = focus minutes this calendar year. Chip 1: sessions this year. Chip 2: label of the best month (e.g. "Mar"). Chip 3: avg monthly focus this year. Bars: 12 monthly entries. `isCurrent` = current month. Detail rows: sessions completed · avg monthly focus · best month · active days · total breaks · current streak · best streak.
+
+Bar `focusMinutes` values are raw (not normalised) — the chart component normalises to the tallest bar.
+
+**Streak calculation (`lib/stats/streak.ts`):** `deriveStreaks(sessions: SessionRecord[], settings: Settings, now: number): { current: number; best: number }`. A day is active if sum of `netActiveMs` from completed focus sessions in that bucket ≥ `settings.dailyStreakGoalMinutes * 60_000`. Walk backward from today: count consecutive active days for `current`, track the longest run for `best`. Today contributes to `current` only if the goal has already been met.
+
+**Full Analysis derivation (`lib/stats/analysis.ts`):** `deriveAnalysisStats(sessions: SessionRecord[], settings: Settings): AnalysisStats`. Single pass where possible. Derived fields:
+
+- `calendarHeatmap`: one entry per `"YYYY-MM-DD"` key with summed focus minutes; covers the trailing 365 days (days with zero are included)
+- `focusByHour`: 24-element array; accumulate `netActiveMs` per local start-hour, divide by number of distinct days that had any session in that hour
+- `focusByDayOfWeek`: 7-element array (Mon=0, Sun=6); remap from JS `Date.getDay()` (Sun=0); same averaging logic
+- `sessionLengthBuckets`: buckets `<10`, `10–20`, `20–30`, `30–45`, `45–60`, `60+` minutes; count focus sessions by `netActiveMs / 60_000`
+- `densityMatrix`: `[dayOfWeek 0–6][hour 0–23]` — average focus minutes per cell
+- `allTimeMinutes`, `allTimeSessions`, `allTimeActiveDays`: totals over all focus sessions
+- `longestSessionMinutes`: max `netActiveMs / 60_000`
+- `bestDayMinutes`: max daily total focus across all day buckets
+- `longestStreak`: from `deriveStreaks`
+- `completionRate`: `completedFocusSessions.length / allFocusSessions.length`; abandoned counts as started but not completed
+- `breakComplianceRate`: `breakRecords.length / completedFocusRecords.length`; skipped breaks produce no record
+- `avgMinutesToFirstSession`: for each day bucket with at least one focus session, compute elapsed time from the day boundary to the first session's `startedAt`; average across all such days
+
+### Acceptance criteria
+
+- [ ] All derivation functions are pure — no side effects, no async, no React imports
+- [ ] `bucketDay` is the single source of day-boundary truth; no other aggregation invents its own boundary logic
+- [ ] Day/Week/Month/Year hero values, chip labels, bar data, and detail rows match the PRD definitions
+- [ ] Bar `focusMinutes` values are raw (not normalised); `isCurrent` correctly identifies the current slot
+- [ ] Streak `current` counts today only if the goal is already met
+- [ ] Streak `best` tracks the longest historical run, including across month and year boundaries
+- [ ] Streak breaks when any day in the contiguous run fails to meet `dailyStreakGoalMinutes`
+- [ ] `focusByDayOfWeek` uses Mon=0 scheme (remapped from JS `Date.getDay()`)
+- [ ] `completionRate` counts abandoned sessions as started but not completed
+- [ ] `breakComplianceRate` is derived as `breakRecords.length / completedFocusRecords.length`
+- [ ] Zero-data inputs return zero values without throwing
+- [ ] Unit tests cover: no data, single session, sessions spanning day boundary, sessions with multiple pauses, streak starting and breaking, streak across month boundary, Day Start Time at non-zero hour, Flowmodoro sessions mixed with Pomodoro sessions
+
+### Blocked by
+
+Issue 6a
 
 ---
 
@@ -241,7 +312,7 @@ Issue 5
 
 ### What to build
 
-Build the Stats screen wired to a `StatsContext` that reads from IndexedDB and exposes derived stats via the functions from Issue 6.
+Build the Stats screen wired to a `StatsContext` that reads from IndexedDB and exposes derived stats via the functions from Issue 6b.
 
 **Range switcher:** Day · Week · Month · Year tabs with an animated underline indicator in `--accent`. Switching tabs swaps the visible panel.
 
@@ -270,7 +341,7 @@ Build the Stats screen wired to a `StatsContext` that reads from IndexedDB and e
 
 ### Blocked by
 
-Issues 3, 6
+Issues 3, 6b
 
 ---
 

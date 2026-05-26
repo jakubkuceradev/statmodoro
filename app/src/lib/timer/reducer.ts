@@ -1,33 +1,66 @@
 import type { Settings } from '../../types/settings'
-import type { TimerState, TimerAction } from '../../types/timer'
+import type { TimerState, TimerAction, TimerEvent } from '../../types/timer'
+
+const newId = (provided?: string) => provided ?? crypto.randomUUID()
+const evt = (type: TimerEvent['type'], now?: number): TimerEvent => ({ type, timestamp: now ?? 0 })
 
 export function reducer(state: TimerState, action: TimerAction, settings: Settings): TimerState {
   switch (action.type) {
     case 'PLAY_PAUSE': {
       if (state.phase === 'idle') {
+        const id = newId(action.sessionId)
         return {
           ...state,
           phase: 'focus_running',
           sessionType: 'focus',
           plannedDuration: settings.focusDuration * 60_000,
           remainingMs: settings.focusDuration * 60_000,
+          currentSessionId: id,
+          currentSessionEvents: [evt('start', action.now)],
         }
       }
-      if (state.phase === 'focus_running') return { ...state, phase: 'focus_paused' }
-      if (state.phase === 'focus_paused')  return { ...state, phase: 'focus_running' }
-      if (state.phase === 'break_running') return { ...state, phase: 'break_paused' }
-      if (state.phase === 'break_paused')  return { ...state, phase: 'break_running' }
+      if (state.phase === 'focus_running') {
+        return { ...state, phase: 'focus_paused', currentSessionEvents: [...state.currentSessionEvents, evt('pause', action.now)] }
+      }
+      if (state.phase === 'focus_paused') {
+        const isFirstPlay = state.currentSessionEvents.length === 0
+        return {
+          ...state,
+          phase: 'focus_running',
+          currentSessionId: isFirstPlay ? newId(action.sessionId) : state.currentSessionId,
+          currentSessionEvents: isFirstPlay
+            ? [evt('start', action.now)]
+            : [...state.currentSessionEvents, evt('resume', action.now)],
+        }
+      }
+      if (state.phase === 'break_running') {
+        return { ...state, phase: 'break_paused', currentSessionEvents: [...state.currentSessionEvents, evt('pause', action.now)] }
+      }
+      if (state.phase === 'break_paused') {
+        const isFirstPlay = state.currentSessionEvents.length === 0
+        return {
+          ...state,
+          phase: 'break_running',
+          currentSessionId: isFirstPlay ? newId(action.sessionId) : state.currentSessionId,
+          currentSessionEvents: isFirstPlay
+            ? [evt('start', action.now)]
+            : [...state.currentSessionEvents, evt('resume', action.now)],
+        }
+      }
       return state
     }
 
     case 'SKIP': {
       if (state.phase === 'idle') {
+        const id = newId(action.sessionId)
         return {
           ...state,
           phase: 'focus_running',
           sessionType: 'focus',
           plannedDuration: settings.focusDuration * 60_000,
           remainingMs: settings.focusDuration * 60_000,
+          currentSessionId: id,
+          currentSessionEvents: [evt('start', action.now)],
         }
       }
 
@@ -39,6 +72,7 @@ export function reducer(state: TimerState, action: TimerAction, settings: Settin
         const plannedDuration = isLastSession
           ? settings.longBreakDuration * 60_000
           : settings.shortBreakDuration * 60_000
+        const breakId = newId(action.sessionId)
         return {
           ...state,
           phase: 'break_running',
@@ -46,11 +80,14 @@ export function reducer(state: TimerState, action: TimerAction, settings: Settin
           plannedDuration,
           remainingMs: plannedDuration,
           loopPosition: state.loopPosition,
+          currentSessionId: breakId,
+          currentSessionEvents: [evt('start', action.now)],
         }
       }
 
       const isLongBreak = state.sessionType === 'long_break'
       const plannedDuration = settings.focusDuration * 60_000
+      const focusId = newId(action.sessionId)
       return {
         ...state,
         phase: 'focus_running',
@@ -58,6 +95,8 @@ export function reducer(state: TimerState, action: TimerAction, settings: Settin
         plannedDuration,
         remainingMs: plannedDuration,
         loopPosition: isLongBreak ? 0 : state.loopPosition + 1,
+        currentSessionId: focusId,
+        currentSessionEvents: [evt('start', action.now)],
       }
     }
 
@@ -80,7 +119,6 @@ export function reducer(state: TimerState, action: TimerAction, settings: Settin
           currentSessionId: null,
         }
       }
-      // Pause in the same phase type, reset timer to the start of the current session
       const pausedPhase = state.phase === 'focus_running' || state.phase === 'focus_paused'
         ? 'focus_paused'
         : 'break_paused'
@@ -102,25 +140,33 @@ export function reducer(state: TimerState, action: TimerAction, settings: Settin
         const plannedDuration = isLastSession
           ? settings.longBreakDuration * 60_000
           : settings.shortBreakDuration * 60_000
+        const autoStart = settings.autoStartBreaks
+        const breakId = autoStart ? newId(action.sessionId) : null
         return {
           ...state,
-          phase: settings.autoStartBreaks ? 'break_running' : 'break_paused',
+          phase: autoStart ? 'break_running' : 'break_paused',
           sessionType,
           plannedDuration,
           remainingMs: plannedDuration,
           loopPosition: state.loopPosition,
+          currentSessionId: breakId,
+          currentSessionEvents: autoStart ? [evt('start', action.now)] : [],
         }
       }
 
       const isLongBreak = state.sessionType === 'long_break'
       const plannedDuration = settings.focusDuration * 60_000
+      const autoStart = settings.autoStartFocus
+      const focusId = autoStart ? newId(action.sessionId) : null
       return {
         ...state,
-        phase: settings.autoStartFocus ? 'focus_running' : 'focus_paused',
+        phase: autoStart ? 'focus_running' : 'focus_paused',
         sessionType: 'focus',
         plannedDuration,
         remainingMs: plannedDuration,
         loopPosition: isLongBreak ? 0 : state.loopPosition + 1,
+        currentSessionId: focusId,
+        currentSessionEvents: autoStart ? [evt('start', action.now)] : [],
       }
     }
 
