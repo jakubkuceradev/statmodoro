@@ -4,6 +4,8 @@ import type { TimerState, TimerAction } from '../types/timer'
 import type { Settings } from '../types/settings'
 import { reducer } from '../lib/timer/reducer'
 import { useSettings } from './SettingsContext'
+import { audioManager } from '../lib/audio/index'
+import { notify, isGranted } from '../lib/notifications/index'
 
 const TIMER_KEY = 'statmodoro:timer'
 
@@ -94,6 +96,44 @@ export const TimerPhaseProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [state.phase])
 
+  // Load audio asset once on mount
+  useEffect(() => {
+    audioManager.load('/sounds/chime.wav')
+  }, [])
+
+  // Keep audio gain in sync with the volume setting
+  useEffect(() => {
+    audioManager.setVolume(settings.volume)
+  }, [settings.volume])
+
+  // Fire sound + desktop notification on focus↔break phase transitions
+  const notifyPhaseRef = useRef(state.phase)
+  useEffect(() => {
+    const prev = notifyPhaseRef.current
+    notifyPhaseRef.current = state.phase
+    if (prev === state.phase) return
+
+    const wasFocus = prev === 'focus_running' || prev === 'focus_paused'
+    const wasBreak = prev === 'break_running' || prev === 'break_paused'
+    const nowBreak = state.phase === 'break_running' || state.phase === 'break_paused'
+    const nowFocus = state.phase === 'focus_running' || state.phase === 'focus_paused'
+
+    const isFocusToBreak = wasFocus && nowBreak
+    const isBreakToFocus = wasBreak && nowFocus
+
+    if (!isFocusToBreak && !isBreakToFocus) return
+
+    // Only fire when the timer expired naturally — if the user pressed Skip
+    // they are already watching the app and alerts would be disruptive/redundant.
+    if (lastActionTypeRef.current !== 'SESSION_END') return
+
+    const s = settingsRef.current
+    if (s.soundAlertsEnabled) audioManager.play()
+    if (s.desktopNotificationsEnabled && isGranted()) {
+      notify('Statmodoro', isFocusToBreak ? 'Time to rest!' : 'Back to focus!')
+    }
+  }, [state.phase])
+
   // On tab/app restore, check whether the running session already expired
   useEffect(() => {
     const onVisible = () => {
@@ -107,9 +147,15 @@ export const TimerPhaseProvider = ({ children }: { children: ReactNode }) => {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [])
 
+  // Tracks the action type that last triggered a phase change, so the notification
+  // effect can distinguish natural expiry (SESSION_END) from user-initiated skips.
+  const lastActionTypeRef = useRef<string | null>(null)
+
   // Wrapped dispatch: captures live remaining before a pause transition so the
   // reducer state reflects actual elapsed time rather than the stale initial value.
   const dispatch = useCallback((action: TimerAction) => {
+    lastActionTypeRef.current = action.type
+
     const now = Date.now()
     const { phase } = stateRef.current
     const isRunning = phase === 'focus_running' || phase === 'break_running'
