@@ -16,7 +16,7 @@ let dbPromise: Promise<StatmodoroDb> | null = null
 
 export const getDb = (): Promise<StatmodoroDb> => {
   if (!dbPromise) {
-    dbPromise = openDB<{
+    const p = openDB<{
       sessions: {
         key: string
         value: SessionRecord
@@ -31,6 +31,10 @@ export const getDb = (): Promise<StatmodoroDb> => {
         }
       },
     })
+    dbPromise = p
+    // Clear the cached promise on failure so the next call can retry rather
+    // than permanently returning a rejected promise (e.g. IDB unavailable).
+    p.catch(() => { if (dbPromise === p) dbPromise = null })
   }
   return dbPromise
 }

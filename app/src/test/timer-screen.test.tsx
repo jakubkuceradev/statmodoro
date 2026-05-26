@@ -1,6 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import 'fake-indexeddb/auto'
+import { IDBFactory } from 'fake-indexeddb'
 import App from '../App'
+import { _resetDb } from '../lib/db/index'
 
 const SETTINGS_KEY = 'statmodoro:settings'
 
@@ -14,6 +17,8 @@ function mmss(minutes: number, seconds = 0): string {
 
 beforeEach(() => {
   localStorage.clear()
+  ;(globalThis as any).indexedDB = new IDBFactory()
+  _resetDb()
 })
 
 describe('initial state', () => {
