@@ -21,6 +21,16 @@ export function reducer(state: TimerState, action: TimerAction, settings: Settin
     }
 
     case 'SKIP': {
+      if (state.phase === 'idle') {
+        return {
+          ...state,
+          phase: 'focus_running',
+          sessionType: 'focus',
+          plannedDuration: settings.focusDuration * 60_000,
+          remainingMs: settings.focusDuration * 60_000,
+        }
+      }
+
       const isFocus = state.phase === 'focus_running' || state.phase === 'focus_paused'
 
       if (isFocus) {

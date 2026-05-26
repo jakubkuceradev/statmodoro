@@ -22,6 +22,14 @@ describe('SETTINGS_CHANGED', () => {
 })
 
 describe('SKIP', () => {
+  it('starts a focus session from idle', () => {
+    const settings = makeSettings({ focusDuration: 25 })
+    const next = reducer(makeState({ phase: 'idle' }), { type: 'SKIP' }, settings)
+    expect(next.phase).toBe('focus_running')
+    expect(next.sessionType).toBe('focus')
+    expect(next.remainingMs).toBe(25 * 60_000)
+  })
+
   it('advances from focus to a break, always running regardless of autoStartBreaks', () => {
     const next = reducer(makeState({ phase: 'focus_running' }), { type: 'SKIP' }, makeSettings({ autoStartBreaks: false }))
     expect(next.phase).toBe('break_running')
