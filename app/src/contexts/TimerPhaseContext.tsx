@@ -136,13 +136,21 @@ export const TimerPhaseProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [state.phase])
 
-  // On tab/app restore, check whether the running session already expired
+  // On tab/app restore, check whether the running session already expired.
+  // Sessions that expired more than plannedDuration+10min ago are marked abandoned
+  // (user clearly wasn't present) rather than natural.
   useEffect(() => {
     const onVisible = () => {
-      const { phase } = stateRef.current
+      const { phase, plannedDuration } = stateRef.current
       const isRunning = phase === 'focus_running' || phase === 'break_running'
-      if (isRunning && endTimestampRef.current !== null && Date.now() >= endTimestampRef.current) {
-        baseDispatch({ type: 'SESSION_END' })
+      if (!isRunning || endTimestampRef.current === null) return
+      const now = Date.now()
+      if (now < endTimestampRef.current) return
+      const overdue = now - endTimestampRef.current
+      if (overdue > plannedDuration + 10 * 60_000) {
+        dispatch({ type: 'ABANDONED_SESSION', now })
+      } else {
+        dispatch({ type: 'SESSION_END' })
       }
     }
     document.addEventListener('visibilitychange', onVisible)
@@ -172,13 +180,14 @@ export const TimerPhaseProvider = ({ children }: { children: ReactNode }) => {
       })
     }
 
+    const prev = stateRef.current
+    const isFocusPhase = prev.phase === 'focus_running' || prev.phase === 'focus_paused'
+    const isBreakPhase = prev.phase === 'break_running' || prev.phase === 'break_paused'
+    const hasSession = prev.currentSessionEvents.length > 0 && prev.currentSessionId !== null
+
     if (action.type === 'SESSION_END' || action.type === 'SKIP') {
-      const prev = stateRef.current
-      const isFocus = prev.phase === 'focus_running' || prev.phase === 'focus_paused'
-      const isBreak = prev.phase === 'break_running' || prev.phase === 'break_paused'
-      const shouldWrite = (isFocus || (isBreak && action.type === 'SESSION_END'))
-        && prev.currentSessionEvents.length > 0
-        && prev.currentSessionId !== null
+      const shouldWrite = (isFocusPhase || (isBreakPhase && action.type === 'SESSION_END'))
+        && hasSession
 
       if (shouldWrite) {
         const endTs = action.type === 'SESSION_END'
@@ -198,7 +207,45 @@ export const TimerPhaseProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
-    baseDispatch(action)
+    if (action.type === 'ABANDONED_SESSION') {
+      if (hasSession) {
+        const endTs = endTimestampRef.current ?? now
+        const events = [...prev.currentSessionEvents, { type: 'end' as const, timestamp: endTs }]
+        writeSession(events, {
+          id: prev.currentSessionId!,
+          sessionType: prev.sessionType,
+          mode: settingsRef.current.mode,
+          endReason: 'abandoned',
+          sessionIndex: prev.loopPosition,
+          plannedDuration: prev.plannedDuration,
+          tzOffsetMinutes: -new Date().getTimezoneOffset(),
+        }).catch(console.error)
+      }
+    }
+
+    if (action.type === 'STOP') {
+      const isPaused = prev.phase === 'focus_paused' || prev.phase === 'break_paused'
+      const alreadyReset = prev.phase === 'idle' || (isPaused && prev.remainingMs >= prev.plannedDuration)
+      if (!alreadyReset && hasSession) {
+        const events = [...prev.currentSessionEvents, { type: 'end' as const, timestamp: now }]
+        writeSession(events, {
+          id: prev.currentSessionId!,
+          sessionType: prev.sessionType,
+          mode: settingsRef.current.mode,
+          endReason: 'stopped',
+          sessionIndex: prev.loopPosition,
+          plannedDuration: prev.plannedDuration,
+          tzOffsetMinutes: -new Date().getTimezoneOffset(),
+        }).catch(console.error)
+      }
+    }
+
+    // Ensure actions that create timer events carry the current timestamp so
+    // the reducer's evt() calls produce correct startedAt/pausedAt/resumedAt values.
+    const actionWithNow = (action.type === 'PLAY_PAUSE' || action.type === 'SKIP' || action.type === 'SESSION_END')
+      ? { ...action, now: (action as { now?: number }).now ?? now }
+      : action
+    baseDispatch(actionWithNow)
   }, [])
 
   return (
