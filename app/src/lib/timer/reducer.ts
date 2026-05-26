@@ -125,10 +125,17 @@ export function reducer(state: TimerState, action: TimerAction, settings: Settin
     }
 
     case 'SETTINGS_CHANGED': {
-      return {
-        ...state,
-        loopPosition: Math.min(state.loopPosition, action.settings.sessionsPerLoop - 1),
+      const clampedLoop = Math.min(state.loopPosition, action.settings.sessionsPerLoop - 1)
+      if (state.phase === 'idle') {
+        const focusDuration = action.settings.focusDuration * 60_000
+        return {
+          ...state,
+          loopPosition: clampedLoop,
+          plannedDuration: focusDuration,
+          remainingMs: focusDuration,
+        }
       }
+      return { ...state, loopPosition: clampedLoop }
     }
 
     case 'RESTORE':
