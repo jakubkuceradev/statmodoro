@@ -211,8 +211,9 @@ export type SessionMode = 'pomodoro' | 'flowmodoro'
 // query time from netActiveMs / plannedDuration >= threshold, so changing the threshold
 // applies consistently to all history rather than freezing a judgment at write time.
 // 'abandoned' — session was too stale to auto-complete on resume (future feature).
+// 'stopped' — user pressed Stop to end the session early and reset the timer.
 // Skipped BREAKS produce no SessionRecord at all.
-export type EndReason = 'natural' | 'skip' | 'abandoned'
+export type EndReason = 'natural' | 'skip' | 'abandoned' | 'stopped'
 
 export interface SessionRecord {
   // Meta
@@ -565,11 +566,13 @@ focus_running
                  SKIP is a no-op in idle (button disabled)
   SESSION_END  → break_running | break_paused (depending on autoStartBreaks)
   LOOP_RESET   → focus_running (loopPosition = 0, timer continues unchanged)
+  STOP         → idle (loopPosition preserved, remainingMs=focusDuration, session events cleared)
 
 focus_paused
   TAP_RING     → focus_running
   SKIP         → [same as above; button disabled in idle]
   LOOP_RESET   → focus_paused (loopPosition = 0)
+  STOP         → idle (same as focus_running)
 
 break_running
   TAP_RING     → break_paused
@@ -577,11 +580,16 @@ break_running
   SKIP         → focus_running | focus_paused (depending on autoStartFocus); break discarded, no record written
   SESSION_END  → focus_running | focus_paused
   LOOP_RESET   → break_running (loopPosition = 0; current break type/duration unchanged — it is mid-session)
+  STOP         → idle (sessionType='focus', loopPosition preserved, remainingMs=focusDuration)
 
 break_paused
   TAP_RING     → break_running
   SKIP         → focus_running | focus_paused; break discarded, no record written
   LOOP_RESET   → break_paused (loopPosition = 0; current break type/duration unchanged)
+  STOP         → idle (same as break_running)
+
+idle
+  STOP         → idle (loopPosition reset to 0, remainingMs=focusDuration)
 
 [all states]
   SETTINGS_CHANGED → plannedDuration unchanged (frozen at session start; new durations take

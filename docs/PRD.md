@@ -53,6 +53,13 @@ A Flowmodoro mode (focus as long as you want, break proportional to focus time) 
 22. A skipped focus session counts as completed if elapsed time exceeded the "Count Session After" threshold.
 23. Skipping a break discards it silently with no stats impact.
 
+### Timer — Stop
+
+24a. A stop button (square icon) sits beside the skip button below the ring.
+24b. Pressing stop during an active or paused focus session ends it with `endReason='stopped'` and returns the timer to a fresh focus idle state; the loop position is preserved so the user resumes where they were in the loop.
+24c. Pressing stop during an active or paused break discards the break silently and returns to focus idle; the loop position is preserved.
+24d. Pressing stop while already idle resets the loop position to 0.
+
 ### Timer — Backgrounding & Accuracy
 
 24. The timer remains accurate when the user switches to another app or tab.
@@ -218,7 +225,7 @@ Sessions are stored as canonical records — not event logs. The reducer uses a 
   netActiveMs: number,         // precomputed: wall time minus pause durations
   sessionType: 'focus' | 'short_break' | 'long_break',
   mode: 'pomodoro' | 'flowmodoro',
-  endReason: 'natural' | 'skip' | 'abandoned',
+  endReason: 'natural' | 'skip' | 'abandoned' | 'stopped',
   sessionIndex: number,        // 1-based position within loop at session start
   plannedDuration: number,     // ms; Flowmodoro uses configured Focus Duration as reference
   flowmodoroDerivedBreakMs?: number,  // focus sessions only

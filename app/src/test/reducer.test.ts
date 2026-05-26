@@ -92,14 +92,107 @@ describe('SESSION_END', () => {
   })
 })
 
+describe('STOP', () => {
+  it('from idle: remains idle with loopPosition reset to 0', () => {
+    const next = reducer(makeState({ phase: 'idle', loopPosition: 2 }), { type: 'STOP' }, makeSettings())
+    expect(next.phase).toBe('idle')
+    expect(next.loopPosition).toBe(0)
+  })
+
+  it('from idle: resets remainingMs and plannedDuration to focus duration from settings', () => {
+    const settings = makeSettings({ focusDuration: 30 })
+    const next = reducer(makeState({ phase: 'idle', remainingMs: 25 * 60_000 }), { type: 'STOP' }, settings)
+    expect(next.remainingMs).toBe(30 * 60_000)
+    expect(next.plannedDuration).toBe(30 * 60_000)
+  })
+
+  it('from focus_running: transitions to focus_paused', () => {
+    const next = reducer(makeState({ phase: 'focus_running' }), { type: 'STOP' }, makeSettings())
+    expect(next.phase).toBe('focus_paused')
+  })
+
+  it('from focus_running: preserves loopPosition', () => {
+    const next = reducer(makeState({ phase: 'focus_running', loopPosition: 2 }), { type: 'STOP' }, makeSettings())
+    expect(next.loopPosition).toBe(2)
+  })
+
+  it('from focus_running: resets remainingMs to full focus duration', () => {
+    const settings = makeSettings({ focusDuration: 25 })
+    const next = reducer(makeState({ phase: 'focus_running', remainingMs: 300_000 }), { type: 'STOP' }, settings)
+    expect(next.remainingMs).toBe(25 * 60_000)
+  })
+
+  it('from focus_running: clears currentSessionEvents', () => {
+    const state = makeState({ phase: 'focus_running', currentSessionEvents: [{ type: 'start', timestamp: Date.now() }] })
+    const next = reducer(state, { type: 'STOP' }, makeSettings())
+    expect(next.currentSessionEvents).toHaveLength(0)
+  })
+
+  it('from focus_running: clears currentSessionId', () => {
+    const next = reducer(makeState({ phase: 'focus_running', currentSessionId: 'abc-123' }), { type: 'STOP' }, makeSettings())
+    expect(next.currentSessionId).toBeNull()
+  })
+
+  it('from focus_paused mid-session: transitions to focus_paused at full duration', () => {
+    const settings = makeSettings({ focusDuration: 25 })
+    const state = makeState({ phase: 'focus_paused', remainingMs: 300_000, plannedDuration: 25 * 60_000 })
+    const next = reducer(state, { type: 'STOP' }, settings)
+    expect(next.phase).toBe('focus_paused')
+    expect(next.remainingMs).toBe(25 * 60_000)
+  })
+
+  it('from focus_paused already at full duration (double-stop): goes to idle and resets loop', () => {
+    const settings = makeSettings({ focusDuration: 25 })
+    const state = makeState({ phase: 'focus_paused', loopPosition: 2, remainingMs: 25 * 60_000, plannedDuration: 25 * 60_000 })
+    const next = reducer(state, { type: 'STOP' }, settings)
+    expect(next.phase).toBe('idle')
+    expect(next.loopPosition).toBe(0)
+  })
+
+  it('from break_running: transitions to break_paused', () => {
+    const next = reducer(makeState({ phase: 'break_running', sessionType: 'short_break' }), { type: 'STOP' }, makeSettings())
+    expect(next.phase).toBe('break_paused')
+    expect(next.sessionType).toBe('short_break')
+  })
+
+  it('from break_running: preserves loopPosition', () => {
+    const next = reducer(makeState({ phase: 'break_running', sessionType: 'short_break', loopPosition: 1 }), { type: 'STOP' }, makeSettings())
+    expect(next.loopPosition).toBe(1)
+  })
+
+  it('from break_running: resets remainingMs to the break planned duration', () => {
+    const state = makeState({ phase: 'break_running', sessionType: 'short_break', plannedDuration: 5 * 60_000, remainingMs: 3 * 60_000 })
+    const next = reducer(state, { type: 'STOP' }, makeSettings())
+    expect(next.remainingMs).toBe(5 * 60_000)
+  })
+
+  it('from break_paused: transitions to break_paused at full break duration', () => {
+    const state = makeState({ phase: 'break_paused', sessionType: 'short_break', plannedDuration: 5 * 60_000, remainingMs: 2 * 60_000 })
+    const next = reducer(state, { type: 'STOP' }, makeSettings())
+    expect(next.phase).toBe('break_paused')
+    expect(next.remainingMs).toBe(5 * 60_000)
+  })
+
+  it('from break_paused already at full duration (double-stop): goes to idle and resets loop', () => {
+    const state = makeState({ phase: 'break_paused', sessionType: 'short_break', loopPosition: 1, plannedDuration: 5 * 60_000, remainingMs: 5 * 60_000 })
+    const next = reducer(state, { type: 'STOP' }, makeSettings())
+    expect(next.phase).toBe('idle')
+    expect(next.loopPosition).toBe(0)
+  })
+})
+
 describe('TAP_RING', () => {
   it('starts a focus session from idle', () => {
     const settings = makeSettings()
     const next = reducer(makeState(), { type: 'TAP_RING' }, settings)
     expect(next.phase).toBe('focus_running')
     expect(next.sessionType).toBe('focus')
-    expect(next.loopPosition).toBe(0)
     expect(next.remainingMs).toBe(settings.focusDuration * 60_000)
+  })
+
+  it('preserves loopPosition when starting from idle', () => {
+    const next = reducer(makeState({ phase: 'idle', loopPosition: 2 }), { type: 'TAP_RING' }, makeSettings())
+    expect(next.loopPosition).toBe(2)
   })
 
   it('pauses a running focus session', () => {
