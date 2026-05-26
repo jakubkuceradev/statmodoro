@@ -19,6 +19,21 @@ describe('SETTINGS_CHANGED', () => {
     const next = reducer(state, { type: 'SETTINGS_CHANGED', settings: newSettings }, newSettings)
     expect(next.loopPosition).toBe(1)
   })
+
+  it('updates plannedDuration and remainingMs when idle', () => {
+    const state = makeState({ phase: 'idle', plannedDuration: 25 * 60_000, remainingMs: 25 * 60_000 })
+    const newSettings = makeSettings({ focusDuration: 40 })
+    const next = reducer(state, { type: 'SETTINGS_CHANGED', settings: newSettings }, newSettings)
+    expect(next.plannedDuration).toBe(40 * 60_000)
+    expect(next.remainingMs).toBe(40 * 60_000)
+  })
+
+  it('does not update remainingMs when paused mid-session', () => {
+    const state = makeState({ phase: 'focus_paused', remainingMs: 800_000, plannedDuration: 25 * 60_000 })
+    const newSettings = makeSettings({ focusDuration: 30 })
+    const next = reducer(state, { type: 'SETTINGS_CHANGED', settings: newSettings }, newSettings)
+    expect(next.remainingMs).toBe(800_000)
+  })
 })
 
 describe('SKIP', () => {
