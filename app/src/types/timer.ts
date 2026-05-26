@@ -28,7 +28,7 @@ export interface TimerState {
 }
 
 export type TimerAction =
-  | { type: 'TAP_RING' }
+  | { type: 'PLAY_PAUSE' }
   | { type: 'SKIP' }
   | { type: 'SESSION_END' }
   | { type: 'LOOP_RESET' }

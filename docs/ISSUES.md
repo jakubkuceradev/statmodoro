@@ -43,7 +43,7 @@ Implement the core timer logic as a pure `useReducer` state machine, wrapped in 
 **States:** `idle | focus_running | focus_paused | break_running | break_paused`
 
 **Transitions:**
-- `TAP_RING` — toggles between running and paused within the current phase
+- `PLAY_PAUSE` — toggles between running and paused within the current phase
 - `SKIP` — advances to the next phase; marks focus session completed if elapsed time ≥ Count Session After threshold
 - `SESSION_END` — fired when countdown reaches zero; advances to next phase respecting Auto-Start settings
 - `LOOP_RESET` — resets loop position to session 1 without interrupting the current timer

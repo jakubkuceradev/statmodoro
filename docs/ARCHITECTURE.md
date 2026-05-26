@@ -316,7 +316,7 @@ export interface TimerState {
 }
 
 export type TimerAction =
-  | { type: 'TAP_RING' }
+  | { type: 'PLAY_PAUSE' }
   | { type: 'SKIP' }
   | { type: 'TICK'; now: number }
   | { type: 'SESSION_END' }
@@ -555,12 +555,12 @@ The reducer in `lib/timer/reducer.ts` is a pure function: `(state, action) => st
 
 ```
 idle
-  TAP_RING → focus_running
+  PLAY_PAUSE → focus_running
              initial state: phase='idle', sessionType='focus', loopPosition=0,
              plannedDuration=settings.focusDuration*60_000, remainingMs=plannedDuration
 
 focus_running
-  TAP_RING     → focus_paused
+  PLAY_PAUSE     → focus_paused
   TICK         → focus_running (decrement remainingMs) | SESSION_END if remainingMs ≤ 0
   SKIP         → [compute next phase based on settings, mark session complete if above threshold]
                  SKIP is a no-op in idle (button disabled)
@@ -569,13 +569,13 @@ focus_running
   STOP         → idle (loopPosition preserved, remainingMs=focusDuration, session events cleared)
 
 focus_paused
-  TAP_RING     → focus_running
+  PLAY_PAUSE     → focus_running
   SKIP         → [same as above; button disabled in idle]
   LOOP_RESET   → focus_paused (loopPosition = 0)
   STOP         → idle (same as focus_running)
 
 break_running
-  TAP_RING     → break_paused
+  PLAY_PAUSE     → break_paused
   TICK         → break_running | SESSION_END
   SKIP         → focus_running | focus_paused (depending on autoStartFocus); break discarded, no record written
   SESSION_END  → focus_running | focus_paused
@@ -583,7 +583,7 @@ break_running
   STOP         → idle (sessionType='focus', loopPosition preserved, remainingMs=focusDuration)
 
 break_paused
-  TAP_RING     → break_running
+  PLAY_PAUSE     → break_running
   SKIP         → focus_running | focus_paused; break discarded, no record written
   LOOP_RESET   → break_paused (loopPosition = 0; current break type/duration unchanged)
   STOP         → idle (same as break_running)

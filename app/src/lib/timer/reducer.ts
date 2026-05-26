@@ -3,7 +3,7 @@ import type { TimerState, TimerAction } from '../../types/timer'
 
 export function reducer(state: TimerState, action: TimerAction, settings: Settings): TimerState {
   switch (action.type) {
-    case 'TAP_RING': {
+    case 'PLAY_PAUSE': {
       if (state.phase === 'idle') {
         return {
           ...state,
