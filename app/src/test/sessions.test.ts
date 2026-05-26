@@ -59,6 +59,17 @@ describe('collapseEvents', () => {
     expect(record.pauses).toEqual([{ pausedAt: 60_000, resumedAt: 90_000 }])
   })
 
+  it('closes a dangling pause at endedAt when the session ended while paused', () => {
+    const events = makeEvents([
+      ['start',  0],
+      ['pause',  60_000],
+      ['end',    90_000],  // ended while still paused — 30s pause window
+    ])
+    const record = collapseEvents(events, BASE_META)
+    expect(record.netActiveMs).toBe(60_000)  // only 60s active before the pause
+    expect(record.pauses).toEqual([{ pausedAt: 60_000, resumedAt: 90_000 }])
+  })
+
   it('captures multiple pause intervals and subtracts all gaps from netActiveMs', () => {
     const events = makeEvents([
       ['start',  0],

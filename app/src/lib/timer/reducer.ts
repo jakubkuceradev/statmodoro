@@ -184,6 +184,20 @@ export function reducer(state: TimerState, action: TimerAction, settings: Settin
       return { ...state, loopPosition: clampedLoop }
     }
 
+    case 'ABANDONED_SESSION': {
+      const focusDuration = settings.focusDuration * 60_000
+      return {
+        ...state,
+        phase: 'idle',
+        loopPosition: 0,
+        sessionType: 'focus',
+        plannedDuration: focusDuration,
+        remainingMs: focusDuration,
+        currentSessionEvents: [],
+        currentSessionId: null,
+      }
+    }
+
     case 'RESTORE':
       return action.state
 

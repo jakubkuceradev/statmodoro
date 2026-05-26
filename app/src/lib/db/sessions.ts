@@ -28,6 +28,8 @@ export const collapseEvents = (events: TimerEvent[], meta: CollapseOptions): Ses
       pausedAt = null
     }
   }
+  // Close a dangling pause (session ended while paused — skip or stop from paused state)
+  if (pausedAt !== null) pauses.push({ pausedAt, resumedAt: endedAt })
 
   const totalPausedMs = pauses.reduce((sum, p) => sum + (p.resumedAt - p.pausedAt), 0)
   const netActiveMs = endedAt - startedAt - totalPausedMs

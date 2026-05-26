@@ -102,4 +102,70 @@ describe('session persistence', () => {
       expect(focus?.pauses).toHaveLength(1)
     })
   })
+
+  it('correctly computes netActiveMs when skipping while paused', async () => {
+    setSettings({ focusDuration: 25, countSessionAfterPercent: 0 })
+    fakeDateAndIntervals()
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /start focus/i }))
+    await act(async () => { vi.advanceTimersByTime(5_000) })   // 5s active
+    fireEvent.click(screen.getByRole('button', { name: /pause focus/i }))
+    await act(async () => { vi.advanceTimersByTime(10_000) })  // 10s paused
+    fireEvent.click(screen.getByRole('button', { name: /skip/i })) // skip while paused
+    await waitFor(async () => {
+      const sessions = await getAllSessions()
+      const focus = sessions.find(s => s.sessionType === 'focus')
+      expect(focus?.netActiveMs).toBe(5_000)  // paused time not counted
+      expect(focus?.pauses).toHaveLength(1)
+    })
+  })
+
+  it('writes a focus record with endReason=stopped when the user stops mid-session', async () => {
+    setSettings({ focusDuration: 25, countSessionAfterPercent: 0 })
+    fakeDateAndIntervals()
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /start focus/i }))
+    await act(async () => { vi.advanceTimersByTime(5_000) })
+    fireEvent.click(screen.getByRole('button', { name: /stop/i }))
+    await waitFor(async () => {
+      const sessions = await getAllSessions()
+      expect(sessions.some(s => s.sessionType === 'focus' && s.endReason === 'stopped')).toBe(true)
+    })
+  })
+
+  it('does not write a record when stopping from the reset-paused state (double-stop)', async () => {
+    setSettings({ focusDuration: 25, countSessionAfterPercent: 0 })
+    fakeDateAndIntervals()
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /start focus/i }))
+    await act(async () => { vi.advanceTimersByTime(5_000) })
+    fireEvent.click(screen.getByRole('button', { name: /stop/i })) // first stop → stopped record
+    fireEvent.click(screen.getByRole('button', { name: /stop/i })) // second stop → idle, no record
+    await waitFor(async () => {
+      const sessions = await getAllSessions()
+      expect(sessions.filter(s => s.endReason === 'stopped')).toHaveLength(1)
+    })
+  })
+
+  it('writes endReason=abandoned when the timer expired more than plannedDuration+10min ago', async () => {
+    setSettings({ focusDuration: 1, countSessionAfterPercent: 0 })
+    fakeDateAndIntervals()
+    const t0 = Date.now()
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /start focus/i }))
+    // Flush effects so endTimestamp is set, but advance only 100ms so the
+    // timer (60s) does NOT expire — no SESSION_END fires here.
+    await act(async () => { vi.advanceTimersByTime(100) })
+    // Jump Date.now() past expiry + grace without firing the interval again.
+    // overdue = (t0 + 12*60_000+1_000) - (t0 + 60_000) = 11*60_000+1_000 > 10*60_000
+    vi.setSystemTime(t0 + 12 * 60_000 + 1_000)
+    // Simulate returning to the tab
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    await waitFor(async () => {
+      const sessions = await getAllSessions()
+      expect(sessions.some(s => s.endReason === 'abandoned')).toBe(true)
+    })
+  })
 })
