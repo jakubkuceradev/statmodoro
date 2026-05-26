@@ -60,7 +60,7 @@ SettingsProvider
 
 **Timer state machine** (`lib/timer/reducer.ts` — pure function):
 - States: `idle | focus_running | focus_paused | break_running | break_paused`
-- Actions: `TAP_RING`, `SKIP`, `SESSION_END`, `LOOP_RESET`, `STOP`, `SETTINGS_CHANGED`, `TICK`, `RESUME_FROM_BACKGROUND`, `RESTORE`
+- Actions: `PLAY_PAUSE`, `SKIP`, `SESSION_END`, `LOOP_RESET`, `STOP`, `SETTINGS_CHANGED`, `TICK`, `RESUME_FROM_BACKGROUND`, `RESTORE`
 - `loopPosition` is 0-indexed; last session of loop triggers `long_break` then resets to 0
 - Abandoned session detection: if `now - endTimestamp > plannedDuration + 10min` on resume, write `endReason='abandoned'` and go idle
 

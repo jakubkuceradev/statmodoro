@@ -114,7 +114,7 @@ export const TimerPhaseProvider = ({ children }: { children: ReactNode }) => {
     const { phase } = stateRef.current
     const isRunning = phase === 'focus_running' || phase === 'break_running'
 
-    if ((action.type === 'TAP_RING' || action.type === 'STOP') && isRunning) {
+    if ((action.type === 'PLAY_PAUSE' || action.type === 'STOP') && isRunning) {
       const liveRemaining = endTimestampRef.current !== null
         ? Math.max(0, endTimestampRef.current - now)
         : stateRef.current.remainingMs

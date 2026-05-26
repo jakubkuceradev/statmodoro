@@ -181,37 +181,37 @@ describe('STOP', () => {
   })
 })
 
-describe('TAP_RING', () => {
+describe('PLAY_PAUSE', () => {
   it('starts a focus session from idle', () => {
     const settings = makeSettings()
-    const next = reducer(makeState(), { type: 'TAP_RING' }, settings)
+    const next = reducer(makeState(), { type: 'PLAY_PAUSE' }, settings)
     expect(next.phase).toBe('focus_running')
     expect(next.sessionType).toBe('focus')
     expect(next.remainingMs).toBe(settings.focusDuration * 60_000)
   })
 
   it('preserves loopPosition when starting from idle', () => {
-    const next = reducer(makeState({ phase: 'idle', loopPosition: 2 }), { type: 'TAP_RING' }, makeSettings())
+    const next = reducer(makeState({ phase: 'idle', loopPosition: 2 }), { type: 'PLAY_PAUSE' }, makeSettings())
     expect(next.loopPosition).toBe(2)
   })
 
   it('pauses a running focus session', () => {
-    const next = reducer(makeState({ phase: 'focus_running' }), { type: 'TAP_RING' }, makeSettings())
+    const next = reducer(makeState({ phase: 'focus_running' }), { type: 'PLAY_PAUSE' }, makeSettings())
     expect(next.phase).toBe('focus_paused')
   })
 
   it('resumes a paused focus session', () => {
-    const next = reducer(makeState({ phase: 'focus_paused' }), { type: 'TAP_RING' }, makeSettings())
+    const next = reducer(makeState({ phase: 'focus_paused' }), { type: 'PLAY_PAUSE' }, makeSettings())
     expect(next.phase).toBe('focus_running')
   })
 
   it('pauses a running break', () => {
-    const next = reducer(makeState({ phase: 'break_running' }), { type: 'TAP_RING' }, makeSettings())
+    const next = reducer(makeState({ phase: 'break_running' }), { type: 'PLAY_PAUSE' }, makeSettings())
     expect(next.phase).toBe('break_paused')
   })
 
   it('resumes a paused break', () => {
-    const next = reducer(makeState({ phase: 'break_paused' }), { type: 'TAP_RING' }, makeSettings())
+    const next = reducer(makeState({ phase: 'break_paused' }), { type: 'PLAY_PAUSE' }, makeSettings())
     expect(next.phase).toBe('break_running')
   })
 })

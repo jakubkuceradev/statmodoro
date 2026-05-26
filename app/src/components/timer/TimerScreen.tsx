@@ -47,12 +47,12 @@ export const TimerScreen = () => {
         fillFraction={fillFraction}
         timeDisplay={splitMs(remainingMs)}
         stateLabel={stateLabel(state.phase)}
-        onTap={() => dispatch({ type: 'TAP_RING' })}
+        onTap={() => dispatch({ type: 'PLAY_PAUSE' })}
       />
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
         <StopButton onStop={() => dispatch({ type: 'STOP' })} />
-        <PlayPauseButton phase={state.phase} onPlayPause={() => dispatch({ type: 'TAP_RING' })} />
+        <PlayPauseButton phase={state.phase} onPlayPause={() => dispatch({ type: 'PLAY_PAUSE' })} />
         <SkipButton onSkip={() => dispatch({ type: 'SKIP' })} />
       </div>
     </section>
