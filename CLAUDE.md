@@ -87,8 +87,9 @@ SettingsProvider
 | 3 | Timer screen UI | 1, 2 |
 | 4 | Settings screen | 1 |
 | 5 | Session schema & IndexedDB storage | 2 |
-| 6 | Stats derivation (pure functions) | 5 |
-| 7 | Stats screen — quick glance | 3, 6 |
+| 6a | Session record storage & event capture | 2, 4 |
+| 6b | Stats derivation (pure functions) | 6a |
+| 7 | Stats screen — quick glance | 3, 6b |
 | 8 | Import / Export & data management | 5 |
 | 9 | Notifications (sound + desktop) | 2, 4 |
 | 10 | Flowmodoro mode | 2, 4, 5 |

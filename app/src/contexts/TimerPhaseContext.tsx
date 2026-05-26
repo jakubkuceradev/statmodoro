@@ -2,10 +2,12 @@ import { createContext, useContext, useReducer, useState, useEffect, useRef, use
 import type { ReactNode } from 'react'
 import type { TimerState, TimerAction } from '../types/timer'
 import type { Settings } from '../types/settings'
+import type { EndReason } from '../types/session'
 import { reducer } from '../lib/timer/reducer'
 import { useSettings } from './SettingsContext'
 import { audioManager } from '../lib/audio/index'
 import { notify, isGranted } from '../lib/notifications/index'
+import { writeSession } from '../lib/db/sessions'
 
 const TIMER_KEY = 'statmodoro:timer'
 
@@ -168,6 +170,32 @@ export const TimerPhaseProvider = ({ children }: { children: ReactNode }) => {
         type: 'RESTORE',
         state: { ...stateRef.current, remainingMs: liveRemaining, endTimestamp: null },
       })
+    }
+
+    if (action.type === 'SESSION_END' || action.type === 'SKIP') {
+      const prev = stateRef.current
+      const isFocus = prev.phase === 'focus_running' || prev.phase === 'focus_paused'
+      const isBreak = prev.phase === 'break_running' || prev.phase === 'break_paused'
+      const shouldWrite = (isFocus || (isBreak && action.type === 'SESSION_END'))
+        && prev.currentSessionEvents.length > 0
+        && prev.currentSessionId !== null
+
+      if (shouldWrite) {
+        const endTs = action.type === 'SESSION_END'
+          ? (endTimestampRef.current ?? now)
+          : now
+        const endReason: EndReason = action.type === 'SESSION_END' ? 'natural' : 'skip'
+        const events = [...prev.currentSessionEvents, { type: 'end' as const, timestamp: endTs }]
+        writeSession(events, {
+          id: prev.currentSessionId!,
+          sessionType: prev.sessionType,
+          mode: settingsRef.current.mode,
+          endReason,
+          sessionIndex: prev.loopPosition,
+          plannedDuration: prev.plannedDuration,
+          tzOffsetMinutes: -new Date().getTimezoneOffset(),
+        }).catch(console.error)
+      }
     }
 
     baseDispatch(action)

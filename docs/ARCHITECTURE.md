@@ -239,6 +239,11 @@ export interface SessionRecord {
   // Flowmodoro only
   flowmodoroDerivedBreakMs?: number  // focus sessions only: focusElapsed ÷ breakRatio (ms)
 
+  // Pause intervals — precomputed from TimerEvent[] on collapse; raw events are discarded.
+  // Stored now to enable future pause analytics (avg pause duration, pause count, etc.)
+  // without a schema migration. Currently unused by stats derivation.
+  pauses: { pausedAt: number; resumedAt: number }[]
+
   // Timezone anchoring
   // Storing the device's UTC offset at startedAt prevents historical data from silently
   // shifting when the user travels. Stats derivation uses this offset to bucket sessions
@@ -249,6 +254,9 @@ export interface SessionRecord {
 
 // Skipped breaks produce NO SessionRecord. breakComplianceRate is derived as:
 //   breakRecords.length / completedFocusRecords.length
+// Completion status is NOT stored — derived at query time as:
+//   netActiveMs / plannedDuration >= settings.countSessionAfterPercent / 100
+// This ensures threshold changes apply retroactively to all history.
 ```
 
 ```typescript
